@@ -6,47 +6,94 @@ nexus-agent
 *.dll
 *.so
 *.dylib
+bin/
 
 # Test binaries
-*. test
+*.test
 *.out
+coverage. out
+coverage.html
+
+# Go build cache
+go-build*/
 
 # Data directories
 data/
 *. db
 *.db-shm
 *.db-wal
+*. sqlite
+*.sqlite3
 logs/
 backups/
+audit-logs/
 
 # Secrets (NEVER commit these!)
-*. key
-*.pem
+*.key
+*. pem
 *.crt
-*.secret
-. env
+*. secret
+.env
+. env.local
+.env.production
 master.key
+signing.key
+verify.key
+age.key
 jwt.secret
 audit.key
 encryption.key
+keyring/
+keys/
 
-# IDE
+# Configuration (might contain secrets)
+config/local.yaml
+config/production.yaml
+nexus.yaml
+*. local.yaml
+
+# IDE & Editors
 .vscode/
-.idea/
+. idea/
 *.swp
-*.swo
+*. swo
 *~
+*. sublime-project
+*.sublime-workspace
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
+ehthumbs.db
 
 # Build artifacts
 dist/
 build/
 vendor/
+release/
 
 # Temporary files
 tmp/
 temp/
 *.tmp
+*.bak
+*.backup
+
+# Testing
+testdata/output/
+*. prof
+*.trace
+
+# Docker
+docker-compose.override.yml
+. dockerignore
+
+# Documentation build
+docs/_build/
+site/
+
+# Certificates for development
+*.localhost. key
+*.localhost.crt
+localhost.pem
