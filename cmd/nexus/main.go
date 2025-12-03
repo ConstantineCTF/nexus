@@ -33,7 +33,7 @@ func main() {
 		log.Printf("Using SQLite storage: %s", *dbPath)
 	case "memory":
 		store = storage.NewMemoryStorage()
-		log.Println("Using in-memory storage (data will be lost on restart)")
+		log.Println("WARNING: Using in-memory storage - all data will be lost on restart!")
 	default:
 		log.Fatalf("Unknown storage type: %s", *storageType)
 	}
