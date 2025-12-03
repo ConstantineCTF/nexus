@@ -183,7 +183,7 @@ func runImport(cmd *cobra.Command, args []string) error {
 					// Update existing secret
 					_, err := client.UpdateSecret(secret.Path, secret.Value, secret.Metadata)
 					if err != nil {
-						printWarning("Failed to update %s: %v", secret.Path, err)
+						printWarning("\nFailed to update existing secret %s: %v", secret.Path, err)
 						failed++
 					} else {
 						updated++
@@ -192,7 +192,7 @@ func runImport(cmd *cobra.Command, args []string) error {
 					skipped++
 				}
 			} else {
-				printWarning("Failed to import %s: %v", secret.Path, err)
+				printWarning("\nFailed to create secret %s: %v", secret.Path, err)
 				failed++
 			}
 		} else {

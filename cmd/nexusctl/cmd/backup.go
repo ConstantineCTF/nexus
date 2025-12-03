@@ -3,6 +3,7 @@ package cmd
 import (
 	"archive/tar"
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"crypto/aes"
 	"crypto/cipher"
@@ -206,7 +207,7 @@ func decryptBackup(encrypted []byte, password string) ([]byte, error) {
 
 // createTarGz creates a tar.gz archive from the given files/directories
 func createTarGz(sources map[string]string) ([]byte, error) {
-	var buf strings.Builder
+	var buf bytes.Buffer
 	gw := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gw)
 
@@ -252,9 +253,10 @@ func createTarGz(sources map[string]string) ([]byte, error) {
 					if err != nil {
 						return err
 					}
-					defer f.Close()
-					if _, err := io.Copy(tw, f); err != nil {
-						return err
+					_, copyErr := io.Copy(tw, f)
+					f.Close() // Close immediately after copying to prevent resource exhaustion
+					if copyErr != nil {
+						return copyErr
 					}
 				}
 				return nil
@@ -278,10 +280,11 @@ func createTarGz(sources map[string]string) ([]byte, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to open %s: %w", srcPath, err)
 			}
-			defer f.Close()
 
-			if _, err := io.Copy(tw, f); err != nil {
-				return nil, fmt.Errorf("failed to copy %s: %w", srcPath, err)
+			_, copyErr := io.Copy(tw, f)
+			f.Close() // Close immediately after copying
+			if copyErr != nil {
+				return nil, fmt.Errorf("failed to copy %s: %w", srcPath, copyErr)
 			}
 		}
 	}
@@ -293,14 +296,14 @@ func createTarGz(sources map[string]string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to close gzip writer: %w", err)
 	}
 
-	return []byte(buf.String()), nil
+	return buf.Bytes(), nil
 }
 
 // extractTarGz extracts a tar.gz archive to a directory
 func extractTarGz(data []byte, destDir string) (map[string]int64, error) {
 	files := make(map[string]int64)
 
-	gr, err := gzip.NewReader(strings.NewReader(string(data)))
+	gr, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
 	}
