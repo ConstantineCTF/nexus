@@ -1,8 +1,9 @@
 # Binaries
 nexusd
 nexusctl
+nexus
 nexus-agent
-*. exe
+*.exe
 *.dll
 *.so
 *.dylib
