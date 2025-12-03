@@ -101,7 +101,10 @@ func TestSignVerify(t *testing.T) {
 
 func TestSaveLoadKeyring(t *testing.T) {
 	// Create temp directory
-	tempDir := filepath.Join(os.TempDir(), "nexus-test")
+	tempDir, err := os.MkdirTemp("", "nexus-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
 	defer os.RemoveAll(tempDir)
 
 	keyring, err := NewKeyring()
@@ -114,6 +117,15 @@ func TestSaveLoadKeyring(t *testing.T) {
 	// Save keyring
 	if err := keyring.SaveToFiles(tempDir, password); err != nil {
 		t.Fatalf("Failed to save keyring: %v", err)
+	}
+
+	// Verify files exist
+	requiredFiles := []string{"master.key", "signing.key", "verify.key", "age.key"}
+	for _, filename := range requiredFiles {
+		path := filepath.Join(tempDir, filename)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			t.Fatalf("Expected file %s does not exist", filename)
+		}
 	}
 
 	// Load keyring

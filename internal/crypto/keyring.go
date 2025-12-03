@@ -57,37 +57,28 @@ func (k *Keyring) SaveToFiles(dir string, password string) error {
 		return fmt.Errorf("failed to create key directory: %w", err)
 	}
 
-	// Derive key from password using Argon2id
+	// Generate salt for key derivation
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return fmt.Errorf("failed to generate salt: %w", err)
 	}
 
+	// Derive key from password using Argon2id
 	derivedKey := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
 
-	// Save master key
-	masterKeyPath := filepath.Join(dir, "master. key")
-	if err := k.saveEncryptedKey(masterKeyPath, k.MasterKey, derivedKey, salt); err != nil {
-		return fmt.Errorf("failed to save master key: %w", err)
+	// Save each key
+	keys := map[string][]byte{
+		"master.key":  k.MasterKey,
+		"signing.key": k.SigningKey,
+		"verify.key":  k.VerifyKey,
+		"age.key":     []byte(k.AgeIdentity.String()),
 	}
 
-	// Save signing key
-	signingKeyPath := filepath.Join(dir, "signing.key")
-	if err := k.saveEncryptedKey(signingKeyPath, k.SigningKey, derivedKey, salt); err != nil {
-		return fmt.Errorf("failed to save signing key: %w", err)
-	}
-
-	// Save verify key (public, no encryption needed but we'll encrypt anyway)
-	verifyKeyPath := filepath.Join(dir, "verify.key")
-	if err := k.saveEncryptedKey(verifyKeyPath, k.VerifyKey, derivedKey, salt); err != nil {
-		return fmt.Errorf("failed to save verify key: %w", err)
-	}
-
-	// Save age identity
-	ageIdentityPath := filepath.Join(dir, "age. key")
-	ageIdentityStr := k.AgeIdentity.String()
-	if err := k.saveEncryptedKey(ageIdentityPath, []byte(ageIdentityStr), derivedKey, salt); err != nil {
-		return fmt.Errorf("failed to save age identity: %w", err)
+	for filename, data := range keys {
+		path := filepath.Join(dir, filename)
+		if err := saveEncryptedKey(path, data, derivedKey, salt); err != nil {
+			return fmt.Errorf("failed to save %s: %w", filename, err)
+		}
 	}
 
 	return nil
@@ -97,14 +88,9 @@ func (k *Keyring) SaveToFiles(dir string, password string) error {
 func LoadFromFiles(dir string, password string) (*Keyring, error) {
 	keyring := &Keyring{}
 
-	// Helper to load each key
-	loadKey := func(filename string) ([]byte, []byte, error) {
-		path := filepath.Join(dir, filename)
-		return loadEncryptedKey(path)
-	}
-
-	// Load master key
-	masterKey, salt, err := loadKey("master. key")
+	// Load master key first to get salt
+	masterKeyPath := filepath.Join(dir, "master.key")
+	encryptedMaster, salt, err := loadEncryptedKey(masterKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load master key: %w", err)
 	}
@@ -113,45 +99,48 @@ func LoadFromFiles(dir string, password string) (*Keyring, error) {
 	derivedKey := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
 
 	// Decrypt master key
-	decryptedMaster, err := decryptKey(masterKey, derivedKey)
+	masterKey, err := decryptKey(encryptedMaster, derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt master key (wrong password?): %w", err)
 	}
-	keyring.MasterKey = decryptedMaster
+	keyring.MasterKey = masterKey
 
-	// Load signing key
-	signingKeyEnc, _, err := loadKey("signing.key")
+	// Load and decrypt signing key
+	signingKeyPath := filepath.Join(dir, "signing.key")
+	encryptedSigning, _, err := loadEncryptedKey(signingKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load signing key: %w", err)
 	}
-	decryptedSigning, err := decryptKey(signingKeyEnc, derivedKey)
+	signingKey, err := decryptKey(encryptedSigning, derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt signing key: %w", err)
 	}
-	keyring.SigningKey = ed25519.PrivateKey(decryptedSigning)
+	keyring.SigningKey = ed25519.PrivateKey(signingKey)
 
-	// Load verify key
-	verifyKeyEnc, _, err := loadKey("verify. key")
+	// Load and decrypt verify key
+	verifyKeyPath := filepath.Join(dir, "verify.key")
+	encryptedVerify, _, err := loadEncryptedKey(verifyKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load verify key: %w", err)
 	}
-	decryptedVerify, err := decryptKey(verifyKeyEnc, derivedKey)
+	verifyKey, err := decryptKey(encryptedVerify, derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt verify key: %w", err)
 	}
-	keyring.VerifyKey = ed25519.PublicKey(decryptedVerify)
+	keyring.VerifyKey = ed25519.PublicKey(verifyKey)
 
-	// Load age identity
-	ageIdentityEnc, _, err := loadKey("age.key")
+	// Load and decrypt age identity
+	ageKeyPath := filepath.Join(dir, "age.key")
+	encryptedAge, _, err := loadEncryptedKey(ageKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load age identity: %w", err)
 	}
-	decryptedAge, err := decryptKey(ageIdentityEnc, derivedKey)
+	ageIdentityStr, err := decryptKey(encryptedAge, derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt age identity: %w", err)
 	}
 
-	ageIdentity, err := age.ParseX25519Identity(string(decryptedAge))
+	ageIdentity, err := age.ParseX25519Identity(string(ageIdentityStr))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse age identity: %w", err)
 	}
@@ -161,8 +150,8 @@ func LoadFromFiles(dir string, password string) (*Keyring, error) {
 	return keyring, nil
 }
 
-// saveEncryptedKey saves an encrypted key to disk
-func (k *Keyring) saveEncryptedKey(path string, data, key, salt []byte) error {
+// saveEncryptedKey saves an encrypted key to disk (standalone function)
+func saveEncryptedKey(path string, data, key, salt []byte) error {
 	encrypted, err := encryptKey(data, key)
 	if err != nil {
 		return err
@@ -170,24 +159,25 @@ func (k *Keyring) saveEncryptedKey(path string, data, key, salt []byte) error {
 
 	// Format: salt (16 bytes) + encrypted data
 	output := append(salt, encrypted...)
+	hexEncoded := hex.EncodeToString(output)
 
-	return os.WriteFile(path, []byte(hex.EncodeToString(output)), 0600)
+	return os.WriteFile(path, []byte(hexEncoded), 0600)
 }
 
 // loadEncryptedKey loads an encrypted key from disk
 func loadEncryptedKey(path string) ([]byte, []byte, error) {
 	hexData, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	data, err := hex.DecodeString(string(hexData))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to decode hex: %w", err)
 	}
 
 	if len(data) < 16 {
-		return nil, nil, fmt.Errorf("invalid key file format")
+		return nil, nil, fmt.Errorf("invalid key file format: too short")
 	}
 
 	salt := data[:16]
