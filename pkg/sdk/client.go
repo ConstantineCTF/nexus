@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -68,6 +69,16 @@ func (c *Client) doRequest(method, path string, body interface{}) (*http.Respons
 	}
 
 	return c.httpClient.Do(req)
+}
+
+// escapePathSegments escapes each segment of a path while preserving slashes
+// This prevents injection attacks while maintaining path structure
+func escapePathSegments(path string) string {
+	segments := strings.Split(path, "/")
+	for i, segment := range segments {
+		segments[i] = url.PathEscape(segment)
+	}
+	return strings.Join(segments, "/")
 }
 
 // parseResponse parses the JSON response into the provided struct
@@ -222,7 +233,7 @@ func (c *Client) CreateSecret(path, value string, metadata map[string]string) (*
 
 // GetSecret retrieves a secret by path
 func (c *Client) GetSecret(path string) (*SecretResponse, error) {
-	resp, err := c.doRequest(http.MethodGet, "/api/v1/secrets/"+path, nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/secrets/"+escapePathSegments(path), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +273,7 @@ func (c *Client) UpdateSecret(path, value string, metadata map[string]string) (*
 		Metadata: metadata,
 	}
 
-	resp, err := c.doRequest(http.MethodPut, "/api/v1/secrets/"+path, req)
+	resp, err := c.doRequest(http.MethodPut, "/api/v1/secrets/"+escapePathSegments(path), req)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +288,7 @@ func (c *Client) UpdateSecret(path, value string, metadata map[string]string) (*
 
 // DeleteSecret deletes a secret
 func (c *Client) DeleteSecret(path string) error {
-	resp, err := c.doRequest(http.MethodDelete, "/api/v1/secrets/"+path, nil)
+	resp, err := c.doRequest(http.MethodDelete, "/api/v1/secrets/"+escapePathSegments(path), nil)
 	if err != nil {
 		return err
 	}
@@ -302,7 +313,7 @@ type VersionListResponse struct {
 
 // GetSecretVersions retrieves version history for a secret
 func (c *Client) GetSecretVersions(path string) (*VersionListResponse, error) {
-	resp, err := c.doRequest(http.MethodGet, "/api/v1/secrets/"+path+"/versions", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/secrets/"+escapePathSegments(path)+"/versions", nil)
 	if err != nil {
 		return nil, err
 	}
