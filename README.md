@@ -1,26 +1,27 @@
 <div align="center">
 
-# 🔐 NEXUS
+<h1>
+  🔐 NEXUS
+</h1>
 
-### Enterprise Secrets Manager - GitOps Native
+<h3>Enterprise Secrets Manager - GitOps Native</h3>
 
-**Secrets Management for Machines, Not Humans**
+<p><em>Secrets Management for Machines, Not Humans</em></p>
 
-[![Go Version](https://img. shields.io/badge/Go-1.23+-00ADD8? style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
-[![License](https://img.shields.io/badge/License-MIT-green? style=for-the-badge)](LICENSE)
-[![Build Status](https://img. shields.io/badge/Build-Passing-success?style=for-the-badge)](https://github.com/ConstantineCTF/nexus/actions)
-[![Security](https://img.shields.io/badge/Security-Hardened-critical?style=for-the-badge&logo=shield&logoColor=white)](docs/security. md)
+<p>
+  <a href="https://go.dev/"><img src="https://img. shields.io/badge/Go-1.23+-00ADD8? style=for-the-badge&logo=go&logoColor=white" alt="Go Version"></a>
+  <a href="LICENSE"><img src="https://img. shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"></a>
+  <a href="https://github.com/ConstantineCTF/nexus"><img src="https://img. shields.io/badge/Build-Passing-success?style=for-the-badge" alt="Build"></a>
+  <a href="#"><img src="https://img. shields.io/badge/Security-Hardened-critical?style=for-the-badge" alt="Security"></a>
+</p>
 
-<img src="docs/assets/nexus-banner.png" alt="NEXUS Banner" width="800"/>
-
----
-
-[**Getting Started**](#-quick-start) •
-[**Features**](#-features) •
-[**Architecture**](#-architecture) •
-[**Installation**](#-installation) •
-[**Documentation**](#-documentation) •
-[**Contributing**](#-contributing)
+<p>
+  <a href="#-quick-start"><strong>Getting Started</strong></a> •
+  <a href="#-features"><strong>Features</strong></a> •
+  <a href="#-architecture"><strong>Architecture</strong></a> •
+  <a href="#-installation"><strong>Installation</strong></a> •
+  <a href="#-documentation"><strong>Documentation</strong></a>
+</p>
 
 </div>
 
