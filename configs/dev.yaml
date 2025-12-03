@@ -1,0 +1,245 @@
+# NEXUS Development Configuration
+# This runs locally with minimal dependencies
+
+server:
+  host: "127.0.0.1"
+  port: 8443
+  mode: "development"  # development|production
+
+  tls:
+    enabled: false  # Disable for local dev
+    cert_file: ""
+    key_file: ""
+
+  timeouts:
+    read: 15s
+    write: 15s
+    idle: 60s
+
+storage:
+  type: "sqlite"  # sqlite|postgres|mysql
+
+  sqlite:
+    path: "./data/nexus.db"
+    encryption: true
+    encryption_key_file: "./data/encryption. key"
+
+  # For future enterprise use
+  postgres:
+    host: "localhost"
+    port: 5432
+    database: "nexus"
+    username: "nexus"
+    password: "${POSTGRES_PASSWORD}"  # From env var
+    ssl_mode: "disable"
+    max_connections: 25
+
+  # Backup settings
+  backup:
+    enabled: true
+    interval: "24h"
+    retention: 30  # days
+    path: "./data/backups"
+
+auth:
+  # Master key for encrypting secrets
+  master_key_file: "./data/master. key"
+
+  # JWT settings
+  jwt:
+    secret_file: "./data/jwt.secret"
+    expiration: "24h"
+    issuer: "nexus-dev"
+
+  # API Key authentication
+  api_keys:
+    enabled: true
+    header_name: "X-Nexus-API-Key"
+
+  # OIDC/OAuth2 (for enterprise customers)
+  oidc:
+    enabled: false
+    issuer_url: ""
+    client_id: ""
+    client_secret: "${OIDC_CLIENT_SECRET}"
+    redirect_url: "http://localhost:8443/auth/callback"
+
+  # LDAP (for enterprise customers)
+  ldap:
+    enabled: false
+    url: ""
+    bind_dn: ""
+    bind_password: "${LDAP_PASSWORD}"
+    user_base_dn: ""
+    user_filter: "(uid=%s)"
+
+rbac:
+  # Role-Based Access Control
+  enabled: true
+
+  # Default admin user (created on first run)
+  default_admin:
+    username: "admin"
+    password: "${NEXUS_ADMIN_PASSWORD}"  # Required on init
+
+  roles:
+    - name: "admin"
+      permissions:
+        - "secrets:*"
+        - "users:*"
+        - "audit:*"
+        - "config:*"
+
+    - name: "developer"
+      permissions:
+        - "secrets:read"
+        - "secrets:create"
+        - "secrets:update"
+
+    - name: "readonly"
+      permissions:
+        - "secrets:read"
+        - "audit:read"
+
+audit:
+  enabled: true
+
+  storage:
+    type: "sqlite"  # sqlite|postgres|file
+    file_path: "./data/audit.log"
+
+  # What to log
+  events:
+    - "secret. create"
+    - "secret. read"
+    - "secret.update"
+    - "secret.delete"
+    - "auth.login"
+    - "auth.failed"
+    - "config.change"
+
+  # Tamper protection
+  signing:
+    enabled: true
+    key_file: "./data/audit.key"
+
+  # Export for compliance
+  export:
+    enabled: false
+    format: "json"  # json|csv|pdf
+    s3:
+      enabled: false
+      bucket: ""
+      region: "us-east-1"
+      prefix: "nexus-audit/"
+
+crypto:
+  # Encryption algorithm
+  algorithm: "age"  # age|aes-gcm
+
+  # Key rotation
+  rotation:
+    enabled: false
+    interval: "90d"
+
+  # Hardware Security Module (enterprise)
+  hsm:
+    enabled: false
+    type: ""  # aws-kms|azure-keyvault|google-kms
+    config: {}
+
+rotation:
+  # Automatic secret rotation
+  enabled: false
+
+  scheduler:
+    interval: "1h"  # Check for rotations every hour
+
+  providers:
+    aws:
+      enabled: false
+      region: "us-east-1"
+      access_key_id: "${AWS_ACCESS_KEY_ID}"
+      secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+
+    postgres:
+      enabled: false
+
+    mysql:
+      enabled: false
+
+    custom:
+      enabled: false
+      # Customers can add custom rotation scripts
+
+agent:
+  # Kubernetes agent settings
+  enabled: false
+
+  sync_interval: "30s"
+
+  kubernetes:
+    namespace: "default"
+    create_secrets: true
+    secret_prefix: "nexus-"
+
+  server:
+    url: "https://nexus-server:8443"
+    api_key: "${NEXUS_AGENT_API_KEY}"
+    tls_verify: true
+
+logging:
+  level: "debug"  # debug|info|warn|error
+  format: "json"  # json|text
+  output: "stdout"  # stdout|file
+  file_path: "./logs/nexus. log"
+
+  rotation:
+    enabled: true
+    max_size: 100  # MB
+    max_age: 30    # days
+    max_backups: 10
+
+metrics:
+  # Prometheus metrics
+  enabled: false
+  port: 9090
+  path: "/metrics"
+
+webhooks:
+  # Notify on events (Slack, Teams, etc.)
+  enabled: false
+
+  endpoints:
+    - name: "slack"
+      url: "${SLACK_WEBHOOK_URL}"
+      events:
+        - "secret.delete"
+        - "auth.failed"
+
+    - name: "custom"
+      url: ""
+      headers:
+        Authorization: "Bearer ${WEBHOOK_TOKEN}"
+      events: []
+
+emergency_access:
+  # Break-glass mechanism
+  enabled: true
+
+  # Require multiple approvals
+  approvals_required: 2
+
+  # Auto-revoke after duration
+  auto_revoke: "1h"
+
+  # Who can approve
+  approvers:
+    - "admin"
+
+  # Notify on emergency access
+  notifications:
+    enabled: true
+    channels:
+      - "slack"
+      - "email"

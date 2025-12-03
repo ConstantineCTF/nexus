@@ -1,0 +1,52 @@
+# Binaries
+nexusd
+nexusctl
+nexus-agent
+*. exe
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*. test
+*.out
+
+# Data directories
+data/
+*. db
+*.db-shm
+*.db-wal
+logs/
+backups/
+
+# Secrets (NEVER commit these!)
+*. key
+*.pem
+*.crt
+*.secret
+. env
+master.key
+jwt.secret
+audit.key
+encryption.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+vendor/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

@@ -1,0 +1,232 @@
+# NEXUS Production Configuration Template
+# Customer copies this and customizes for their environment
+
+server:
+  host: "0.0.0.0"  # Listen on all interfaces
+  port: 8443
+  mode: "production"
+
+  tls:
+    enabled: true
+    cert_file: "/etc/nexus/tls/server.crt"
+    key_file: "/etc/nexus/tls/server.key"
+    min_version: "1.3"
+
+  timeouts:
+    read: 30s
+    write: 30s
+    idle: 120s
+
+  # Rate limiting
+  rate_limit:
+    enabled: true
+    requests_per_second: 100
+    burst: 200
+
+storage:
+  type: "postgres"  # Recommended for production
+
+  postgres:
+    host: "${DB_HOST}"
+    port: 5432
+    database: "nexus_prod"
+    username: "${DB_USERNAME}"
+    password: "${DB_PASSWORD}"
+    ssl_mode: "require"
+    max_connections: 100
+
+  backup:
+    enabled: true
+    interval: "6h"
+    retention: 90
+    path: "/var/backups/nexus"
+
+    # Enterprise: Backup to S3
+    s3:
+      enabled: true
+      bucket: "${BACKUP_BUCKET}"
+      region: "${AWS_REGION}"
+      encryption: true
+
+auth:
+  master_key_file: "/etc/nexus/secrets/master.key"
+
+  jwt:
+    secret_file: "/etc/nexus/secrets/jwt.secret"
+    expiration: "8h"
+    issuer: "nexus-production"
+
+  api_keys:
+    enabled: true
+    header_name: "X-Nexus-API-Key"
+
+  oidc:
+    enabled: true  # Enterprise SSO
+    issuer_url: "${OIDC_ISSUER}"
+    client_id: "${OIDC_CLIENT_ID}"
+    client_secret: "${OIDC_CLIENT_SECRET}"
+    redirect_url: "${NEXUS_URL}/auth/callback"
+    scopes:
+      - "openid"
+      - "profile"
+      - "email"
+
+rbac:
+  enabled: true
+
+  # Sync roles from external system
+  sync:
+    enabled: true
+    source: "oidc"  # oidc|ldap
+    interval: "1h"
+
+audit:
+  enabled: true
+
+  storage:
+    type: "postgres"
+
+  events:
+    - "*"  # Log everything in production
+
+  signing:
+    enabled: true
+    key_file: "/etc/nexus/secrets/audit.key"
+
+  export:
+    enabled: true
+    format: "json"
+
+    s3:
+      enabled: true
+      bucket: "${AUDIT_BUCKET}"
+      region: "${AWS_REGION}"
+      prefix: "audit-logs/"
+
+    schedule: "0 0 * * *"  # Daily at midnight
+
+crypto:
+  algorithm: "age"
+
+  rotation:
+    enabled: true
+    interval: "90d"
+
+  hsm:
+    enabled: false
+    type: "aws-kms"
+    config:
+      key_id: "${KMS_KEY_ID}"
+      region: "${AWS_REGION}"
+
+rotation:
+  enabled: true
+
+  scheduler:
+    interval: "30m"
+
+  providers:
+    aws:
+      enabled: true
+      region: "${AWS_REGION}"
+
+    postgres:
+      enabled: true
+
+    custom:
+      enabled: true
+
+agent:
+  enabled: true
+  sync_interval: "15s"
+
+  kubernetes:
+    namespace: "${K8S_NAMESPACE}"
+    create_secrets: true
+    secret_prefix: "nexus-"
+    annotations:
+      managed-by: "nexus"
+
+  server:
+    url: "${NEXUS_SERVER_URL}"
+    api_key: "${NEXUS_AGENT_API_KEY}"
+    tls_verify: true
+    ca_cert: "/etc/nexus/tls/ca.crt"
+
+logging:
+  level: "info"
+  format: "json"
+  output: "file"
+  file_path: "/var/log/nexus/nexus.log"
+
+  rotation:
+    enabled: true
+    max_size: 500
+    max_age: 90
+    max_backups: 30
+
+metrics:
+  enabled: true
+  port: 9090
+  path: "/metrics"
+
+webhooks:
+  enabled: true
+
+  endpoints:
+    - name: "slack-security"
+      url: "${SLACK_SECURITY_WEBHOOK}"
+      events:
+        - "secret.delete"
+        - "auth.failed"
+        - "emergency_access.requested"
+        - "emergency_access.granted"
+
+    - name: "pagerduty"
+      url: "${PAGERDUTY_WEBHOOK}"
+      events:
+        - "system.error"
+        - "storage.failure"
+
+emergency_access:
+  enabled: true
+  approvals_required: 3
+  auto_revoke: "30m"
+
+  approvers:
+    - "cto@company.com"
+    - "security-lead@company.com"
+    - "ceo@company.com"
+
+  notifications:
+    enabled: true
+    channels:
+      - "slack-security"
+      - "pagerduty"
+      - "email"
+
+compliance:
+  # SOC2/ISO27001 features
+  enabled: true
+
+  standards:
+    - "soc2"
+    - "iso27001"
+    - "gdpr"
+
+  reporting:
+    enabled: true
+    schedule: "0 0 1 * *"  # Monthly
+    output_path: "/var/nexus/compliance-reports"
+
+  password_policy:
+    min_length: 16
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_special: true
+    expiration: "90d"
+
+  session:
+    max_duration: "8h"
+    idle_timeout: "30m"
