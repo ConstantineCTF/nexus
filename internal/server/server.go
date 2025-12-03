@@ -19,11 +19,13 @@ const (
 )
 
 // User represents an authenticated user (simplified for now)
+// NOTE: In production, Password should be a bcrypt hash, not plaintext.
+// This simplified implementation is for development/testing only.
 type User struct {
 	ID       string
 	Name     string
 	Role     string
-	Password string // In production, use proper hashing
+	Password string // In production, store bcrypt hash and use bcrypt.CompareHashAndPassword
 }
 
 // Server represents the NEXUS HTTP server
@@ -56,11 +58,15 @@ func NewServer(cfg Config, store storage.Storage, keyring *crypto.Keyring) *Serv
 	}
 
 	// Initialize default admin user (in production, load from config/database)
+	// WARNING: This is a development default. In production:
+	// 1. Load users from a secure database
+	// 2. Use bcrypt-hashed passwords
+	// 3. Never use default credentials
 	s.users["admin"] = &User{
 		ID:       "admin-001",
 		Name:     "Admin User",
 		Role:     "admin",
-		Password: "admin", // In production, use proper hashing
+		Password: "admin", // Development only - use bcrypt hash in production
 	}
 
 	// Set up HTTP server with routes

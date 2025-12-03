@@ -1,7 +1,9 @@
 package server
 
 import (
+	"crypto/subtle"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -223,7 +225,9 @@ func (s *Server) handleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: now,
 		CreatedBy: userID,
 	}
-	_ = s.storage.CreateSecretVersion(ctx, version)
+	if err := s.storage.CreateSecretVersion(ctx, version); err != nil {
+		log.Printf("Warning: failed to create secret version for %s: %v", secret.Path, err)
+	}
 
 	s.logAuditEvent(r, "secret.create", secret.ID, req.Path, userID, true, "")
 
@@ -306,7 +310,9 @@ func (s *Server) handleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: secret.UpdatedAt,
 		CreatedBy: userID,
 	}
-	_ = s.storage.CreateSecretVersion(ctx, version)
+	if err := s.storage.CreateSecretVersion(ctx, version); err != nil {
+		log.Printf("Warning: failed to create secret version for %s: %v", secret.Path, err)
+	}
 
 	s.logAuditEvent(r, "secret.update", secret.ID, path, userID, true, "")
 
@@ -651,7 +657,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Verify credentials (simplified - in production, use proper password hashing)
 	user, ok := s.users[req.Username]
-	if !ok || user.Password != req.Password {
+	// Use constant-time comparison to prevent timing attacks
+	if !ok || subtle.ConstantTimeCompare([]byte(user.Password), []byte(req.Password)) != 1 {
 		s.logAuditEvent(r, "auth.login", "", "", req.Username, false, "invalid credentials")
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
@@ -717,7 +724,7 @@ func (s *Server) logAuditEvent(r *http.Request, action, secretID, secretPath, us
 	logData := action + userID + secretPath + time.Now().Format(time.RFC3339)
 	signature, _ := s.keyring.SignString(logData)
 
-	log := &storage.AuditLog{
+	auditLog := &storage.AuditLog{
 		ID:         uuid.New().String(),
 		Timestamp:  time.Now(),
 		Action:     action,
@@ -732,7 +739,9 @@ func (s *Server) logAuditEvent(r *http.Request, action, secretID, secretPath, us
 		Signature:  signature,
 	}
 
-	_ = s.storage.CreateAuditLog(ctx, log)
+	if err := s.storage.CreateAuditLog(ctx, auditLog); err != nil {
+		log.Printf("Warning: failed to create audit log: %v", err)
+	}
 }
 
 // getClientIP extracts the client IP address from the request
