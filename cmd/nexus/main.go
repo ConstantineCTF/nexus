@@ -17,12 +17,40 @@ import (
 func main() {
 	addr := flag.String("addr", ":9000", "Server address")
 	storageType := flag.String("storage", "memory", "Storage backend: memory or sqlite")
-	dbPath := flag.String("db", "./nexus.db", "SQLite database path (when storage=sqlite)")
+	dbPath := flag.String("db", "./nexus. db", "SQLite database path (when storage=sqlite)")
 	flag.Parse()
+
+	// Load or create keyring
+	var keyring *crypto.Keyring
+	var err error
+
+	keyringDir := "./data/keys"
+	keyringPassword := os.Getenv("NEXUS_KEY_PASSWORD")
+	if keyringPassword == "" {
+		keyringPassword = "changeme-in-production" // Default password
+	}
+
+	// Try to load existing keyring
+	keyring, err = crypto.LoadFromFiles(keyringDir, keyringPassword)
+	if err != nil {
+		// Keyring doesn't exist, create new one
+		log.Println("No existing keyring found, creating new one...")
+		keyring, err = crypto.NewKeyring()
+		if err != nil {
+			log.Fatalf("Failed to create keyring: %v", err)
+		}
+
+		// Save keyring to disk
+		if err := keyring.SaveToFiles(keyringDir, keyringPassword); err != nil {
+			log.Fatalf("Failed to save keyring: %v", err)
+		}
+		log.Printf("✓ Keyring saved to %s", keyringDir)
+	} else {
+		log.Printf("✓ Loaded existing keyring from %s", keyringDir)
+	}
 
 	// Initialize storage based on flag
 	var store storage.Storage
-	var err error
 
 	switch *storageType {
 	case "sqlite":
@@ -38,12 +66,6 @@ func main() {
 		log.Fatalf("Unknown storage type: %s", *storageType)
 	}
 	defer store.Close()
-
-	// Initialize keyring
-	keyring, err := crypto.NewKeyring()
-	if err != nil {
-		log.Fatalf("Failed to initialize keyring: %v", err)
-	}
 
 	// Create server config
 	cfg := server.Config{
