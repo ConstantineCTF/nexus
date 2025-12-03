@@ -16,12 +16,26 @@ import (
 
 func main() {
 	addr := flag.String("addr", ":9000", "Server address")
+	storageType := flag.String("storage", "memory", "Storage backend: memory or sqlite")
+	dbPath := flag.String("db", "./nexus.db", "SQLite database path (when storage=sqlite)")
 	flag.Parse()
 
-	// Initialize storage
-	store, err := storage.NewSQLiteStorage(":memory:")
-	if err != nil {
-		log.Fatalf("Failed to initialize storage: %v", err)
+	// Initialize storage based on flag
+	var store storage.Storage
+	var err error
+
+	switch *storageType {
+	case "sqlite":
+		store, err = storage.NewSQLiteStorage(*dbPath)
+		if err != nil {
+			log.Fatalf("Failed to create SQLite storage: %v", err)
+		}
+		log.Printf("Using SQLite storage: %s", *dbPath)
+	case "memory":
+		store = storage.NewMemoryStorage()
+		log.Println("WARNING: Using in-memory storage - all data will be lost on restart!")
+	default:
+		log.Fatalf("Unknown storage type: %s", *storageType)
 	}
 	defer store.Close()
 
