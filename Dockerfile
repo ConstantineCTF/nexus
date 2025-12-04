@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 go build -o /nexusctl ./cmd/nexusctl
 # Runtime stage
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata curl
 
 # Create non-root user
 RUN addgroup -g 1000 nexus && \
@@ -40,7 +40,7 @@ WORKDIR /var/lib/nexus
 EXPOSE 9000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget -q --spider http://localhost:9000/health || exit 1
+    CMD curl -f http://localhost:9000/health || exit 1
 
 ENTRYPOINT ["nexus"]
 CMD ["-addr", ":9000", "-storage", "sqlite", "-db", "/var/lib/nexus/nexus.db"]
