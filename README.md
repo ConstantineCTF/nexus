@@ -373,7 +373,7 @@ curl -X POST http://localhost:9000/api/v1/secrets \
 └─────────────────┘
 ```
 
-**Read more:** [**Architecture Guide →**](docs/ARCHITECTURE. md)
+**Read more:** [**Architecture Guide →**](docs/ARCHITECTURE.md)
 
 ---
 
