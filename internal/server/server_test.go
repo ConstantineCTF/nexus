@@ -3,8 +3,10 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -15,9 +17,33 @@ import (
 func setupTestServer(t *testing.T) *Server {
 	store := storage.NewMemoryStorage()
 
-	keyring, err := crypto.NewKeyring()
+	// Load or create keyring
+	var keyring *crypto.Keyring
+	var err error
+
+	keyringDir := "./data/keys"
+	keyringPassword := os.Getenv("NEXUS_KEY_PASSWORD")
+	if keyringPassword == "" {
+		keyringPassword = "changeme-in-production" // Default password
+	}
+
+	// Try to load existing keyring
+	keyring, err = crypto.LoadFromFiles(keyringDir, keyringPassword)
 	if err != nil {
-		t.Fatalf("Failed to create keyring: %v", err)
+		// Keyring doesn't exist, create new one
+		log.Println("No existing keyring found, creating new one...")
+		keyring, err = crypto.NewKeyring()
+		if err != nil {
+			log.Fatalf("Failed to create keyring: %v", err)
+		}
+
+		// Save keyring to disk
+		if err := keyring.SaveToFiles(keyringDir, keyringPassword); err != nil {
+			log.Fatalf("Failed to save keyring: %v", err)
+		}
+		log.Printf("✓ Keyring saved to %s", keyringDir)
+	} else {
+		log.Printf("✓ Loaded existing keyring from %s", keyringDir)
 	}
 
 	cfg := Config{

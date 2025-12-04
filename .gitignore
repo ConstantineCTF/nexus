@@ -12,7 +12,7 @@ bin/
 # Test binaries
 *.test
 *.out
-coverage. out
+coverage.out
 coverage.html
 
 # Go build cache
@@ -20,10 +20,10 @@ go-build*/
 
 # Data directories
 data/
-*. db
+*.db
 *.db-shm
 *.db-wal
-*. sqlite
+*.sqlite
 *.sqlite3
 logs/
 backups/
@@ -31,11 +31,11 @@ audit-logs/
 
 # Secrets (NEVER commit these!)
 *.key
-*. pem
+*.pem
 *.crt
-*. secret
+*.secret
 .env
-. env.local
+.env.local
 .env.production
 master.key
 signing.key
@@ -51,15 +51,20 @@ keys/
 config/local.yaml
 config/production.yaml
 nexus.yaml
-*. local.yaml
+*.local.yaml
+
+# Export/import test files
+backup.json
+secrets-export.json
+*.export.json
 
 # IDE & Editors
 .vscode/
-. idea/
+.idea/
 *.swp
-*. swo
+*.swo
 *~
-*. sublime-project
+*.sublime-project
 *.sublime-workspace
 
 # OS
@@ -83,18 +88,21 @@ temp/
 
 # Testing
 testdata/output/
-*. prof
+*.prof
 *.trace
 
 # Docker
 docker-compose.override.yml
-. dockerignore
+.dockerignore
 
 # Documentation build
 docs/_build/
 site/
 
 # Certificates for development
-*.localhost. key
+*.localhost.key
 *.localhost.crt
 localhost.pem
+
+# Protobuf generated files
+*.pb.go
